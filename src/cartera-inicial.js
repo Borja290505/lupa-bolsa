@@ -53,6 +53,11 @@ export default {
       referencia: 'IBCF.DE', ref: { valor: 9.44, ...FUNDS_REF }, invertido: 10.51,
     },
     {
+      id: 'efectivo-automatizada', nombre: 'Efectivo', oficial: '',
+      tipo: 'efectivo', grupo: 'Cartera automatizada', isin: '', indice: '',
+      referencia: '', ref: { valor: 53.04, fecha: '2026-11-23', base: '2026-11-23' }, invertido: 53.04,
+    },
+    {
       id: 'fidelity-world', nombre: 'Fidelity MSCI World', oficial: 'Fidelity MSCI World Index Fund P-ACC-EUR',
       tipo: 'fondo', grupo: 'Fondos de inversión', isin: 'IE00BYX5NX33', indice: 'MSCI World',
       referencia: 'EUNL.DE', ref: { valor: 151.87, ...FUNDS_REF }, invertido: 162.84,

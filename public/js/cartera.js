@@ -100,7 +100,8 @@
     }
     return out;
   }
-  const symbols = () => [...new Set(S.doc.posiciones.map((p) => p.referencia))];
+  const isCash = (p) => p.tipo === 'efectivo';
+  const symbols = () => [...new Set(S.doc.posiciones.filter((p) => !isCash(p) && p.referencia).map((p) => p.referencia))];
   const pickLive = (q) => ({ price: q.price, prevClose: q.prevClose, time: q.time, name: q.name, exchange: q.exchange, currency: q.currency });
 
   async function loadHistory(syms) {
@@ -143,6 +144,7 @@
     return hs ? closeOnOrBefore(hs.closes, p.ref.base) : NaN;
   }
   function val(p) {
+    if (isCash(p)) return { ok: true, value: p.ref.valor, prev: p.ref.valor, today: 0, todayPct: 0, pnl: 0, pnlPct: 0 };
     const a = anchorOf(p), q = S.live[p.referencia];
     let r = { ok: false, value: p.ref.valor, prev: p.ref.valor };
     if (isNum(a) && a > 0 && q && isNum(q.price)) {
@@ -172,11 +174,12 @@
   // Serie de valor (simulada con lo que tienes ahora) para el gráfico de evolución
   function valueSeries(list) {
     const dates = new Set();
-    for (const p of list) for (const [d] of S.hist[p.referencia]?.closes || []) dates.add(d);
+    for (const p of list) if (!isCash(p)) for (const [d] of S.hist[p.referencia]?.closes || []) dates.add(d);
     const out = [];
     for (const d of [...dates].sort()) {
       let sum = 0, ok = true;
       for (const p of list) {
+        if (isCash(p)) { sum += p.ref.valor; continue; }
         const hs = S.hist[p.referencia], a = anchorOf(p);
         const c = hs ? closeOnOrBefore(hs.closes, d) : NaN;
         if (!isNum(c) || !isNum(a) || a <= 0) { ok = false; break; }
@@ -203,7 +206,7 @@
   async function persistAnchors() {
     let changed = false;
     for (const p of S.doc.posiciones) {
-      if (p.ref.precio > 0) continue;
+      if (p.ref.precio > 0 || isCash(p)) continue;
       const a = anchorOf(p);
       if (isNum(a) && a > 0) { p.ref.precio = a; changed = true; }
     }
@@ -358,13 +361,13 @@
           h('span', { class: 'pgroup__pnl' }, delta(G.pnl, G.pnlPct))),
         h('ul', { class: 'holds' }, g.items.map((p) => {
           const v = val(p);
-          const today = v.ok ? `${isToday ? 'Hoy' : 'Última sesión'} ${pctS(v.todayPct)}` : 'Sin precio en directo';
-          const kind = p.indice || (p.tipo === 'accion' ? 'Acción' : 'Fondo');
+          const today = isCash(p) ? 'Pendiente de invertir' : v.ok ? `${isToday ? 'Hoy' : 'Última sesión'} ${pctS(v.todayPct)}` : 'Sin precio en directo';
+          const kind = isCash(p) ? '' : p.indice || (p.tipo === 'accion' ? 'Acción' : 'Fondo');
           return h('li', {}, h('a', { class: 'hold', href: `#p-${encodeURIComponent(p.id)}` },
             h('span', { class: 'hold__name', text: p.nombre }),
             h('span', { class: 'hold__value num', text: eur(v.value) }),
-            h('span', { class: 'hold__meta muted' }, h('span', { class: 'num', text: today }), h('span', { class: 'hold__idx', text: `, ${kind}` })),
-            h('span', { class: 'hold__pnl' }, delta(v.pnl, v.pnlPct))));
+            h('span', { class: 'hold__meta muted' }, h('span', { class: 'num', text: today }), kind ? h('span', { class: 'hold__idx', text: `, ${kind}` }) : null),
+            h('span', { class: 'hold__pnl' }, isCash(p) ? null : delta(v.pnl, v.pnlPct))));
         })));
     }));
   }
@@ -433,6 +436,21 @@
     const el = $('#view-detalle');
     const p = S.doc.posiciones.find((x) => x.id === id);
     if (!p) { put(el, h('p', { class: 'muted', text: 'Esa posición ya no está en tu cartera.' }), h('a', { class: 'btn', href: '#cartera' }, 'Volver a mi cartera')); return; }
+    if (isCash(p)) {
+      const T = totals(S.doc.posiciones);
+      put(el,
+        h('a', { class: 'back', href: '#cartera' }, '‹ Mi cartera'),
+        h('section', { class: 'ptotal' },
+          h('h1', { class: 'pdetail__title', text: p.nombre }),
+          h('ul', { class: 'tags' }, ['Pendiente de invertir', p.grupo].map((t) => h('li', { text: t }))),
+          h('p', { class: 'ptotal__value', text: eur(p.ref.valor) })),
+        h('dl', { class: 'facts' },
+          h('div', { class: 'fact' }, h('dt', { text: 'Peso en tu cartera' }), h('dd', { text: T.value ? `${NF1.format((p.ref.valor / T.value) * 100)} %` : '' })),
+          h('div', { class: 'fact' }, h('dt', { text: 'Ajustado con MyInvestor' }), h('dd', { text: `${eur(p.ref.valor)} el ${fmtDayFull(p.ref.fecha)}` }))),
+        h('div', { class: 'actions' }, h('a', { class: 'btn btn--ghost', href: '#editar' }, 'Editar')),
+        h('p', { class: 'pnote muted small', text: 'Dinero que espera en tu cartera automatizada. MyInvestor lo invierte cuando llega a 150 € más el 0,5 % del valor de la cartera. No cambia con la bolsa. Cuando se invierta, pon el nuevo valor de cada fondo en Editar.' }));
+      return;
+    }
     const fondo = p.tipo === 'fondo';
     const tags = [fondo ? 'Fondo indexado' : 'Acción', p.indice, p.grupo].filter(Boolean);
     put(el,
@@ -505,7 +523,7 @@
       valor.addEventListener('input', calc); pnl.addEventListener('input', calc); calc();
       const nombre = inp('nombre', p.nombre, { maxlength: 80, autocomplete: 'off' });
       const grupo = h('select', { class: 'field__input', name: 'grupo' }, grupos().map((g) => h('option', { value: g, selected: g === p.grupo ? true : null }, g)));
-      const tipo = h('select', { class: 'field__input', name: 'tipo' }, h('option', { value: 'fondo', selected: p.tipo !== 'accion' ? true : null }, 'Fondo'), h('option', { value: 'accion', selected: p.tipo === 'accion' ? true : null }, 'Acción o ETF'));
+      const tipo = h('select', { class: 'field__input', name: 'tipo' }, h('option', { value: 'fondo', selected: p.tipo !== 'accion' ? true : null }, 'Fondo'), h('option', { value: 'accion', selected: p.tipo === 'accion' ? true : null }, 'Acción o ETF'), h('option', { value: 'efectivo', selected: p.tipo === 'efectivo' ? true : null }, 'Efectivo'));
       const referencia = inp('referencia', p.referencia, { maxlength: 24, autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off' });
       const isin = inp('isin', p.isin, { maxlength: 12, autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off' });
       const indice = inp('indice', p.indice, { maxlength: 60, autocomplete: 'off' });
@@ -547,9 +565,10 @@
       let bad = false;
       const next = cards.map((c, i) => {
         const r = c._read(), old = originals.get(draft[i].id) || {};
+        if (r.tipo === 'efectivo') { r.referencia = ''; r.pnl = 0; }
         c._err('');
         if (!r.nombre) { c._err('Falta el nombre.'); bad = true; }
-        else if (!/^[A-Z0-9.\-=^&]{1,24}$/.test(r.referencia)) { c._err('Falta un ticker de referencia válido (mira «Más datos»).'); bad = true; }
+        else if (r.tipo !== 'efectivo' && !/^[A-Z0-9.\-=^&]{1,24}$/.test(r.referencia)) { c._err('Falta un ticker de referencia válido (mira «Más datos»).'); bad = true; }
         else if (!isNum(r.valor) || r.valor < 0) { c._err('Escribe el valor que muestra MyInvestor, por ejemplo 139,31.'); bad = true; }
         else if (!isNum(r.pnl) || r.valor - r.pnl < 0) { c._err('Escribe la ganancia o pérdida, por ejemplo -12,87.'); bad = true; }
         return { old, r };
@@ -559,7 +578,7 @@
       btn.disabled = true; btn.textContent = 'Guardando…';
       try {
         // Comprueba los tickers nuevos o cambiados antes de guardar
-        const newSyms = [...new Set(next.filter(({ old, r }) => !old.id || old.referencia !== r.referencia).map(({ r }) => r.referencia))].filter((s) => !S.hist[s]);
+        const newSyms = [...new Set(next.filter(({ old, r }) => r.tipo !== 'efectivo' && (!old.id || old.referencia !== r.referencia)).map(({ r }) => r.referencia))].filter((s) => !S.hist[s]);
         if (newSyms.length) await loadHistory(newSyms);
         const missing = newSyms.filter((s) => !S.hist[s]);
         if (missing.length) {
@@ -575,7 +594,9 @@
             ref: { ...(old.ref || {}) }, invertido: Math.round((r.valor - r.pnl) * 100) / 100,
           };
           const valueChanged = !isNum(old.ref?.valor) || Math.abs(old.ref.valor - r.valor) > 0.004;
-          if (!valueChanged && (old.referencia !== r.referencia || old.tipo !== r.tipo)) {
+          if (r.tipo === 'efectivo') {
+            p.ref = { valor: r.valor, fecha: valueChanged ? today : old.ref.fecha, base: valueChanged ? today : old.ref.base };
+          } else if (!valueChanged && (old.referencia !== r.referencia || old.tipo !== r.tipo)) {
             // Mismo dato de MyInvestor con otra referencia: se recalcula el anclaje en su fecha
             p.ref = { valor: old.ref.valor, fecha: old.ref.fecha, base: old.ref.base };
           } else if (valueChanged) {

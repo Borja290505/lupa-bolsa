@@ -30,8 +30,9 @@ export function validarCartera(doc) {
   const posiciones = doc.posiciones.map((p, i) => {
     const nombre = str(p?.nombre, 80);
     if (!nombre) throw new HttpError(400, `A la posición ${i + 1} le falta el nombre.`);
-    const referencia = str(p.referencia, 24).toUpperCase();
-    if (!SYMBOL_RE.test(referencia)) throw new HttpError(400, `«${nombre}»: el ticker de referencia no es válido.`);
+    const efectivo = p.tipo === 'efectivo';
+    const referencia = efectivo ? '' : str(p.referencia, 24).toUpperCase();
+    if (!efectivo && !SYMBOL_RE.test(referencia)) throw new HttpError(400, `«${nombre}»: el ticker de referencia no es válido.`);
     const valor = num(p.ref?.valor), invertido = num(p.invertido);
     if (!(valor >= 0)) throw new HttpError(400, `«${nombre}»: el valor no es válido.`);
     if (!(invertido >= 0)) throw new HttpError(400, `«${nombre}»: lo invertido no es válido.`);
@@ -44,13 +45,13 @@ export function validarCartera(doc) {
     return {
       id, nombre,
       oficial: str(p.oficial, 140),
-      tipo: p.tipo === 'accion' ? 'accion' : 'fondo',
+      tipo: efectivo ? 'efectivo' : p.tipo === 'accion' ? 'accion' : 'fondo',
       grupo: str(p.grupo, 60) || 'Otros',
       isin: str(p.isin, 12).toUpperCase(),
       indice: str(p.indice, 60),
       referencia,
       ref: { valor: Math.round(valor * 100) / 100, fecha, base, ...(precio > 0 ? { precio } : {}) },
-      invertido: Math.round(invertido * 100) / 100,
+      invertido: Math.round((efectivo ? valor : invertido) * 100) / 100,
     };
   });
   return { version: 1, actualizado: new Date().toISOString(), posiciones };
