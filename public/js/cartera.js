@@ -61,6 +61,19 @@
   const fmtTime = (unix) => new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(new Date(unix * 1000));
   const fmtDayTime = (unix) => new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(unix * 1000));
   // "139,31" / "-12,87" / "1.234,56" / "−5" → número
+  // "11/11/2026, 18/11/26" -> ['2026-11-11', '2026-11-18']; null si alguna no se entiende
+  function parseFechas(txt) {
+    const out = [];
+    for (const t of String(txt || '').split(/[,;\s]+/).filter(Boolean)) {
+      const m = t.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/);
+      if (!m) return null;
+      const y = m[3].length === 2 ? 2000 + +m[3] : +m[3], mo = +m[2], d = +m[1];
+      const dt = new Date(Date.UTC(y, mo - 1, d));
+      if (dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d) return null;
+      out.push(dt.toISOString().slice(0, 10));
+    }
+    return [...new Set(out)].sort();
+  }
   function parseEs(s) {
     const t = String(s).trim().replace(/\s/g, '').replace(/[−–]/g, '-').replace(/€/g, '');
     if (!t) return NaN;
@@ -74,7 +87,7 @@
     clave: store.get('clave', ''),
     doc: null, hist: {}, live: {}, errors: {},
     updated: null, loading: false, view: null, detailId: null,
-    range: store.get('rango', '3M'), timer: null, chart: null, chartSeries: null, chartKind: null,
+    range: store.get('rango', 'Compra'), timer: null, chart: null, chartSeries: null, chartKind: null,
     scrollCartera: 0,
   };
 
@@ -316,10 +329,10 @@
       h('section', { class: 'pchart', 'aria-label': 'Evolución de tu cartera' },
         h('div', { class: 'pchart__head' },
           h('p', { id: 'c-chart-cap', class: 'pchart__cap' }),
-          h('div', { class: 'ranges', role: 'group', 'aria-label': 'Periodo' }, ['1M', '3M', '6M', '1A'].map((k) => h('button', {
+          h('div', { class: 'ranges', role: 'group', 'aria-label': 'Periodo' }, RANGE_KEYS.map((k) => h('button', {
             type: 'button', class: 'chip chip--small', 'aria-pressed': S.range === k ? 'true' : 'false',
             onclick: () => { S.range = k; store.set('rango', k); renderCartera(); },
-          }, k)))),
+          }, RANGE_LABEL[k])))),
         h('div', { id: 'c-chart', class: 'pchart__plot' }),
         h('p', { class: 'muted small', text: 'Simulado con lo que tienes hoy: no tiene en cuenta cuándo compraste cada cosa.' })),
       h('section', { id: 'c-alloc', class: 'alloc', 'aria-label': 'Reparto de tu cartera' })),
@@ -344,7 +357,7 @@
       Object.keys(S.errors).length ? h('p', { class: 'alert small', role: 'status', text: `Sin precio de ${Object.keys(S.errors).join(', ')}: se usa el último valor guardado.` }) : null);
     renderAlloc(T);
     renderGroups();
-    renderValueChart(S.doc.posiciones, fresh, null, '#c-chart', '#c-chart-cap');
+    renderValueChart(S.doc.posiciones, fresh, S.range === 'Compra' ? totals(S.doc.posiciones).inv : null, '#c-chart', '#c-chart-cap');
   }
 
   function renderAlloc(T) {
@@ -383,8 +396,18 @@
   }
 
   /* ---------- Gráfico de evolución ---------- */
-  function rangeStart(points, key) {
+  const RANGE_KEYS = ['Compra', '1M', '3M', '6M', '1A'];
+  const RANGE_LABEL = { Compra: 'Desde la compra', '1M': '1M', '3M': '3M', '6M': '6M', '1A': '1A' };
+  const firstBuy = (list) => list.flatMap((p) => (isCash(p) ? [] : p.compras || [])).sort()[0] || null;
+  function rangeStart(points, key, from0) {
     if (!points.length) return 0;
+    if (key === 'Compra') {
+      if (!from0) return 0;
+      // empieza en el último cierre antes de la primera compra, para ver desde dónde partió
+      let i = points.findIndex((p) => p.time >= from0);
+      if (i < 0) return Math.max(0, points.length - 1);
+      return points[i].time > from0 && i > 0 ? i - 1 : i;
+    }
     const days = { '1M': 31, '3M': 92, '6M': 183, '1A': 366 }[key] || 92;
     const lastD = new Date(points[points.length - 1].time + 'T12:00:00Z');
     lastD.setUTCDate(lastD.getUTCDate() - days);
@@ -397,8 +420,13 @@
     const el = $(sel), cap = $(capSel);
     if (!el || !LWC) return;
     const all = valueSeries(list);
-    const pts = all.slice(rangeStart(all, S.range));
+    const from0 = firstBuy(list);
+    const pts = all.slice(rangeStart(all, S.range, from0));
     const capText = () => {
+      if (S.range === 'Compra') {
+        const T = totals(list);
+        return `${from0 ? `Desde que compraste (${fmtDayFull(from0)})` : 'Desde que invertiste'}: ${eurS(T.pnl)} (${pctS(T.pnlPct)})`;
+      }
       if (pts.length < 2) return 'Sin historial suficiente';
       const a = pts[0].value, b = pts[pts.length - 1].value;
       const lbl = { '1M': 'En 1 mes', '3M': 'En 3 meses', '6M': 'En 6 meses', '1A': 'En 1 año' }[S.range];
@@ -427,6 +455,15 @@
       lineColor: col.s1, lineWidth: 2, topColor: ChartView.alpha(col.s1, 0.2), bottomColor: ChartView.alpha(col.s1, 0.02),
       priceLineVisible: false, lastValueVisible: true, crosshairMarkerRadius: 4,
       priceFormat: { type: 'custom', formatter: eur, minMove: 0.01 },
+      // que la línea de lo invertido siempre quepa, para ver de un vistazo si ganas o pierdes
+      autoscaleInfoProvider: (orig) => {
+        const r = orig();
+        if (r && r.priceRange && isNum(invested)) {
+          r.priceRange.minValue = Math.min(r.priceRange.minValue, invested);
+          r.priceRange.maxValue = Math.max(r.priceRange.maxValue, invested);
+        }
+        return r;
+      },
     });
     series.setData(pts);
     if (isNum(invested)) series.createPriceLine({ price: invested, color: col.muted, lineWidth: 1, lineStyle: LWC.LineStyle.Dashed, axisLabelVisible: true, title: 'Invertido' });
@@ -472,10 +509,10 @@
       h('section', { class: 'pchart', 'aria-label': 'Evolución de esta posición' },
         h('div', { class: 'pchart__head' },
           h('p', { id: 'd-chart-cap', class: 'pchart__cap' }),
-          h('div', { class: 'ranges', role: 'group', 'aria-label': 'Periodo' }, ['1M', '3M', '6M', '1A'].map((k) => h('button', {
+          h('div', { class: 'ranges', role: 'group', 'aria-label': 'Periodo' }, RANGE_KEYS.map((k) => h('button', {
             type: 'button', class: 'chip chip--small', 'aria-pressed': S.range === k ? 'true' : 'false',
             onclick: () => { S.range = k; store.set('rango', k); renderDetalle(id); },
-          }, k)))),
+          }, RANGE_LABEL[k])))),
         h('div', { id: 'd-chart', class: 'pchart__plot' })),
       h('dl', { id: 'd-facts', class: 'facts' }),
       h('div', { class: 'actions' },
@@ -506,7 +543,8 @@
       fact('Ajustado con MyInvestor', `${eur(p.ref.valor)} el ${fmtDayFull(p.ref.fecha)}`, p.tipo === 'fondo' && p.ref.base !== p.ref.fecha ? h('small', { text: `Con el valor liquidativo del ${fmtDayFull(p.ref.base)}` }) : null),
       fact('Referencia en directo', refName && refName !== p.referencia ? `${refName} (${p.referencia})` : p.referencia, q && isNum(q.price) ? h('small', { text: `${NF2.format(q.price)} ${q.currency === 'EUR' ? '€' : q.currency || ''} (${fmtDayTime(q.time)})` }) : h('small', { text: S.errors[p.referencia] || 'Sin precio' })),
       p.oficial ? fact('Nombre oficial', p.oficial) : null,
-      p.isin ? fact('ISIN', h('span', { class: 'num', text: p.isin })) : null);
+      p.isin ? fact('ISIN', h('span', { class: 'num', text: p.isin })) : null,
+      p.compras?.length ? fact(p.compras.length > 1 ? 'Fechas de compra' : 'Fecha de compra', p.compras.map(fmtDayFull).join(', ')) : null);
     renderValueChart([p], fresh, p.invertido, '#d-chart', '#d-chart-cap');
   }
 
@@ -538,6 +576,7 @@
       const isin = inp('isin', p.isin, { maxlength: 12, autocapitalize: 'characters', spellcheck: 'false', autocomplete: 'off' });
       const indice = inp('indice', p.indice, { maxlength: 60, autocomplete: 'off' });
       const oficial = inp('oficial', p.oficial, { maxlength: 140, autocomplete: 'off' });
+      const compras = inp('compras', p._compras !== undefined ? p._compras : (p.compras || []).map((d) => d.split('-').reverse().join('/')).join(', '), { inputmode: 'numeric', autocomplete: 'off', placeholder: '11/11/2026, 18/11/2026' });
       const err = h('p', { class: 'editor__err', role: 'alert', hidden: true });
       const node = h('fieldset', { class: 'ecard', 'data-i': i },
         h('legend', { class: 'ecard__title', text: p.nombre || 'Nueva posición' }),
@@ -555,11 +594,12 @@
           h('summary', { text: 'Más datos' }),
           h('div', { class: 'ecard__grid' },
             f('Nombre', nombre), f('Grupo', grupo), f('Tipo', tipo),
+            f('Fechas de compra', compras, 'Separadas por comas. Están en los movimientos de MyInvestor'),
             f('Ticker de referencia', referencia, 'De Yahoo Finance. En fondos, un ETF del mismo índice (por ejemplo EUNL.DE); en acciones, su ticker (SLR.MC)'),
             f('Índice', indice), f('ISIN', isin), f('Nombre oficial', oficial)),
           h('button', { type: 'button', class: 'btn btn--danger btn--small', onclick: () => { sync(); draft.splice(i, 1); paint(); } }, 'Quitar esta posición')),
         err);
-      node._read = () => ({ valor: parseEs(valor.value), pnl: parseEs(pnl.value), rawValor: valor.value, rawPnl: pnl.value, nombre: nombre.value.trim(), grupo: grupo.value, tipo: tipo.value, referencia: referencia.value.trim().toUpperCase(), isin: isin.value.trim().toUpperCase(), indice: indice.value.trim(), oficial: oficial.value.trim() });
+      node._read = () => ({ valor: parseEs(valor.value), pnl: parseEs(pnl.value), rawValor: valor.value, rawPnl: pnl.value, nombre: nombre.value.trim(), grupo: grupo.value, tipo: tipo.value, referencia: referencia.value.trim().toUpperCase(), isin: isin.value.trim().toUpperCase(), indice: indice.value.trim(), oficial: oficial.value.trim(), rawCompras: compras.value, compras: parseFechas(compras.value) });
       node._err = (t) => { err.textContent = t; err.hidden = !t; };
       return node;
     }
@@ -567,7 +607,7 @@
     function sync() {
       [...list.querySelectorAll('.ecard')].forEach((c, i) => {
         const r = c._read(), d = draft[i];
-        Object.assign(d, { nombre: r.nombre, grupo: r.grupo, tipo: r.tipo, referencia: r.referencia, isin: r.isin, indice: r.indice, oficial: r.oficial, _valor: r.rawValor, _pnl: r.rawPnl });
+        Object.assign(d, { nombre: r.nombre, grupo: r.grupo, tipo: r.tipo, referencia: r.referencia, isin: r.isin, indice: r.indice, oficial: r.oficial, _valor: r.rawValor, _pnl: r.rawPnl, _compras: r.rawCompras });
       });
     }
     function paint() { put(list, draft.map(card)); }
@@ -586,6 +626,7 @@
         else if (r.tipo !== 'efectivo' && !/^[A-Z0-9.\-=^&]{1,24}$/.test(r.referencia)) { c._err('Falta un ticker de referencia válido (mira «Más datos»).'); bad = true; }
         else if (!isNum(r.valor) || r.valor < 0) { c._err('Escribe el valor que muestra MyInvestor, por ejemplo 139,31.'); bad = true; }
         else if (!isNum(r.pnl) || r.valor - r.pnl < 0) { c._err('Escribe la ganancia o pérdida, por ejemplo -12,87.'); bad = true; }
+        else if (!r.compras) { c._err('Revisa las fechas de compra: escríbelas así, 11/11/2026, 18/11/2026.'); bad = true; }
         return { old, r };
       });
       if (bad) { msg.textContent = 'Revisa las posiciones marcadas.'; msg.hidden = false; return; }
@@ -608,6 +649,7 @@
             nombre: r.nombre, oficial: r.oficial, tipo: r.tipo, grupo: r.grupo, isin: r.isin, indice: r.indice, referencia: r.referencia,
             ref: { ...(old.ref || {}) }, invertido: Math.round((r.valor - r.pnl) * 100) / 100,
           };
+          if (r.compras.length && r.tipo !== 'efectivo') p.compras = r.compras;
           const valueChanged = !isNum(old.ref?.valor) || Math.abs(old.ref.valor - r.valor) > 0.004;
           if (r.tipo === 'efectivo') {
             p.ref = { valor: r.valor, fecha: valueChanged ? today : old.ref.fecha, base: valueChanged ? today : old.ref.base };

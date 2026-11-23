@@ -18,37 +18,37 @@ export default {
   actualizado: '2026-11-23T19:10:00.000Z',
   posiciones: [
     {
-      id: 'ishares-us', nombre: 'iShares US Equity Index', oficial: 'iShares US Index Fund (IE) clase S Acc EUR',
+      id: 'ishares-us', compras: ['2026-10-24', '2026-10-27', '2026-11-12'], nombre: 'iShares US Equity Index', oficial: 'iShares US Index Fund (IE) clase S Acc EUR',
       tipo: 'fondo', grupo: 'Cartera automatizada', isin: 'IE000N4ZYX28', indice: 'S&P 500',
       referencia: 'SXR8.DE', ref: { valor: 139.31, ...FUNDS_REF }, invertido: 152.18,
     },
     {
-      id: 'ishares-world', nombre: 'iShares Developed World', oficial: 'iShares Developed World Screened Index Fund (IE) D Acc EUR',
+      id: 'ishares-world', compras: ['2026-10-24', '2026-10-27', '2026-11-12'], nombre: 'iShares Developed World', oficial: 'iShares Developed World Screened Index Fund (IE) D Acc EUR',
       tipo: 'fondo', grupo: 'Cartera automatizada', isin: 'IE000N51F726', indice: 'MSCI World Screened',
       referencia: 'EUNL.DE', ref: { valor: 71.46, ...FUNDS_REF }, invertido: 78.06,
     },
     {
-      id: 'ishares-em', nombre: 'iShares Emerging Markets', oficial: 'iShares Emerging Markets Index Fund (IE) clase S Acc EUR',
+      id: 'ishares-em', compras: ['2026-10-24', '2026-10-27', '2026-11-12'], nombre: 'iShares Emerging Markets', oficial: 'iShares Emerging Markets Index Fund (IE) clase S Acc EUR',
       tipo: 'fondo', grupo: 'Cartera automatizada', isin: 'IE000QAZP7L2', indice: 'MSCI Emerging Markets',
       referencia: 'EUNM.DE', ref: { valor: 48.76, ...FUNDS_REF }, invertido: 53.78,
     },
     {
-      id: 'fidelity-japan', nombre: 'Fidelity MSCI Japan', oficial: 'Fidelity MSCI Japan Index Fund P-ACC-EUR',
+      id: 'fidelity-japan', compras: ['2026-10-24', '2026-10-27', '2026-11-12'], nombre: 'Fidelity MSCI Japan', oficial: 'Fidelity MSCI Japan Index Fund P-ACC-EUR',
       tipo: 'fondo', grupo: 'Cartera automatizada', isin: 'IE00BYX5N771', indice: 'MSCI Japan',
       referencia: 'EUNN.DE', ref: { valor: 43.53, ...FUNDS_REF }, invertido: 47.37,
     },
     {
-      id: 'fidelity-europe', nombre: 'Fidelity MSCI Europe', oficial: 'Fidelity MSCI Europe Index Fund P-ACC-EUR',
+      id: 'fidelity-europe', compras: ['2026-10-24', '2026-10-27', '2026-11-12'], nombre: 'Fidelity MSCI Europe', oficial: 'Fidelity MSCI Europe Index Fund P-ACC-EUR',
       tipo: 'fondo', grupo: 'Cartera automatizada', isin: 'IE00BYX5MD61', indice: 'MSCI Europe',
       referencia: 'EUNK.DE', ref: { valor: 28.79, ...FUNDS_REF }, invertido: 29.75,
     },
     {
-      id: 'fidelity-pacific', nombre: 'Fidelity MSCI Pacific ex-Japan', oficial: 'Fidelity MSCI Pacific ex-Japan Index Fund P-ACC-USD',
+      id: 'fidelity-pacific', compras: ['2026-10-24', '2026-10-27', '2026-11-12'], nombre: 'Fidelity MSCI Pacific ex-Japan', oficial: 'Fidelity MSCI Pacific ex-Japan Index Fund P-ACC-USD',
       tipo: 'fondo', grupo: 'Cartera automatizada', isin: 'IE00BDZVHT63', indice: 'MSCI Pacific ex-Japan',
       referencia: 'SXR1.DE', ref: { valor: 13.1, ...FUNDS_REF }, invertido: 14.03,
     },
     {
-      id: 'vanguard-us', nombre: 'Vanguard US Equity Index', oficial: 'Vanguard U.S. 500 Stock Index Fund EUR Hedged Acc',
+      id: 'vanguard-us', compras: ['2026-10-24', '2026-10-27', '2026-11-12'], nombre: 'Vanguard US Equity Index', oficial: 'Vanguard U.S. 500 Stock Index Fund EUR Hedged Acc',
       tipo: 'fondo', grupo: 'Cartera automatizada', isin: 'IE00B1G3DH73', indice: 'S&P 500 con cobertura a euros',
       referencia: 'IBCF.DE', ref: { valor: 9.44, ...FUNDS_REF }, invertido: 10.51,
     },
@@ -58,12 +58,12 @@ export default {
       referencia: '', ref: { valor: 53.04, fecha: '2026-11-23', base: '2026-11-23' }, invertido: 53.04,
     },
     {
-      id: 'fidelity-world', nombre: 'Fidelity MSCI World', oficial: 'Fidelity MSCI World Index Fund P-ACC-EUR',
+      id: 'fidelity-world', compras: ['2026-10-23', '2026-11-18'], nombre: 'Fidelity MSCI World', oficial: 'Fidelity MSCI World Index Fund P-ACC-EUR',
       tipo: 'fondo', grupo: 'Fondos de inversión', isin: 'IE00BYX5NX33', indice: 'MSCI World',
       referencia: 'EUNL.DE', ref: { valor: 151.87, ...FUNDS_REF }, invertido: 162.84,
     },
     {
-      id: 'solaria', nombre: 'Solaria Energía', oficial: 'Solaria Energía y Medio Ambiente',
+      id: 'solaria', compras: ['2026-11-11', '2026-11-18'], nombre: 'Solaria Energía', oficial: 'Solaria Energía y Medio Ambiente',
       tipo: 'accion', grupo: 'Acciones y ETF', isin: '', indice: '',
       referencia: 'SLR.MC', ref: { valor: 84.21, fecha: '2026-11-23', base: '2026-11-23' }, invertido: 104.27,
     },

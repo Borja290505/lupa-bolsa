@@ -42,6 +42,7 @@ export function validarCartera(doc) {
     while (ids.has(id)) id += '-2';
     ids.add(id);
     const precio = num(p.ref?.precio);
+    const compras = [...new Set((Array.isArray(p.compras) ? p.compras : []).map((d) => str(d, 10)).filter((d) => DATE_RE.test(d)))].sort().slice(0, 30);
     return {
       id, nombre,
       oficial: str(p.oficial, 140),
@@ -52,9 +53,10 @@ export function validarCartera(doc) {
       referencia,
       ref: { valor: Math.round(valor * 100) / 100, fecha, base, ...(precio > 0 ? { precio } : {}) },
       invertido: Math.round((efectivo ? valor : invertido) * 100) / 100,
+      ...(compras.length && !efectivo ? { compras } : {}),
     };
   });
-  return { version: 1, actualizado: new Date().toISOString(), posiciones };
+  return { version: 1, actualizado: new Date().toISOString(), fechasMigradas: true, posiciones };
 }
 
 function mismaClave(a, b) {
@@ -80,6 +82,12 @@ export async function handleCartera(request, env, url) {
   if (request.method === 'GET') {
     let doc = await stub.leer();
     if (!doc) doc = await stub.guardar(validarCartera(CARTERA_INICIAL));
+    // Carteras guardadas antes de tener fechas de compra: se toman de la cartera inicial
+    const semilla = new Map(CARTERA_INICIAL.posiciones.map((p) => [p.id, p]));
+    if (!doc.fechasMigradas) {
+      for (const p of doc.posiciones) if (!p.compras && semilla.get(p.id)?.compras) p.compras = semilla.get(p.id).compras;
+      doc = await stub.guardar({ ...validarCartera(doc), fechasMigradas: true });
+    }
     return { cartera: doc };
   }
   if (request.method === 'PUT') {
