@@ -102,6 +102,14 @@
   }
   const isCash = (p) => p.tipo === 'efectivo';
   const symbols = () => [...new Set(S.doc.posiciones.filter((p) => !isCash(p) && p.referencia).map((p) => p.referencia))];
+  // Yahoo a veces no incluye la última sesión en las velas diarias: se añade con el último precio
+  function mergeLive(sym) {
+    const hs = S.hist[sym], q = S.live[sym];
+    if (!hs || !q || !isNum(q.price) || !isNum(q.time)) return;
+    const d = madridDate(new Date(q.time * 1000)), last = hs.closes[hs.closes.length - 1];
+    if (!last || d > last[0]) hs.closes.push([d, q.price]);
+    else if (d === last[0]) last[1] = q.price;
+  }
   const pickLive = (q) => ({ price: q.price, prevClose: q.prevClose, time: q.time, name: q.name, exchange: q.exchange, currency: q.currency });
 
   async function loadHistory(syms) {
@@ -111,6 +119,7 @@
       if (q.error) { S.errors[q.symbol] = q.error; continue; }
       S.hist[q.symbol] = { ...q, closes: q.closes.slice() };
       if (!S.live[q.symbol]) S.live[q.symbol] = pickLive(q);
+      mergeLive(q.symbol);
     }
   }
   async function refreshLive() {
@@ -123,6 +132,7 @@
         const m = new Map(hs.closes);
         for (const [d, c] of q.closes) m.set(d, c);
         hs.closes = [...m.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1));
+        mergeLive(q.symbol);
       }
     }
     S.updated = new Date();
