@@ -1,0 +1,20 @@
+{
+  // Configuración del Worker de Cloudflare
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "lupa-bolsa",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  // Almacenamiento de tu cartera (Durable Object con SQLite, incluido en el plan gratuito).
+  // Se crea solo la primera vez que haces "npm run deploy".
+  "durable_objects": {
+    "bindings": [{ "name": "CARTERA", "class_name": "Cartera" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Cartera"] }],
+  "observability": {
+    "enabled": true
+  }
+}

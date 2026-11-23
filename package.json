@@ -1,0 +1,14 @@
+{
+  "name": "lupa-bolsa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Analizador técnico de acciones, materias primas, índices y criptos (Cloudflare Worker + web)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  },
+  "type": "module"
+}

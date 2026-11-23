@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Lupa: mi cartera</title>
+  <meta name="description" content="Tu cartera de fondos y acciones con el valor total en directo, y análisis técnico de cualquier valor.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#f3f4f6" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Lupa">
+  <link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner wrap">
+      <a class="brand" href="#cartera" aria-label="Lupa, ir a mi cartera">
+        <svg class="brand__mark" viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="13.5" cy="13.5" r="10" fill="none" stroke="currentColor" stroke-width="3"/>
+          <path d="M21 21l7.5 7.5" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+          <path d="M9.5 9v9M13.5 7v6.5M17.5 11v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <rect x="8.3" y="11" width="2.4" height="4.5" rx=".6" fill="currentColor"/>
+          <rect x="12.3" y="8.6" width="2.4" height="3.4" rx=".6" fill="currentColor"/>
+          <rect x="16.3" y="12.6" width="2.4" height="4.6" rx=".6" fill="currentColor"/>
+        </svg>
+        <span class="brand__word">Lupa</span>
+      </a>
+      <nav class="tabs" aria-label="Secciones">
+        <a class="tabs__item" href="#cartera" data-tab="cartera">Mi cartera</a>
+        <a class="tabs__item" href="#analizar" data-tab="analizar">Analizar</a>
+      </nav>
+    </div>
+    <div class="progress" hidden></div>
+  </header>
+
+  <main class="wrap" id="main">
+    <section id="view-cartera" class="view"></section>
+    <section id="view-detalle" class="view" hidden></section>
+    <section id="view-editar" class="view" hidden></section>
+
+    <section id="view-analizar" class="view" hidden>
+      <div class="searchbar">
+        <form class="search" role="search" autocomplete="off">
+          <label class="visually-hidden" for="q">Buscar un valor</label>
+          <input id="q" type="search" placeholder="Santander, Apple, oro, IBEX…" enterkeyhint="search" spellcheck="false" autocapitalize="off" autocorrect="off" role="combobox" aria-autocomplete="list" aria-controls="suggest" aria-expanded="false">
+          <button type="submit" class="search__go">Analizar</button>
+          <ul id="suggest" class="suggest" role="listbox" aria-label="Sugerencias" hidden></ul>
+        </form>
+        <div class="seg" role="radiogroup" aria-label="Plazo del análisis">
+          <button type="button" role="radio" data-interval="1h">Corto <small>1 hora</small></button>
+          <button type="button" role="radio" data-interval="1d">Medio <small>diario</small></button>
+          <button type="button" role="radio" data-interval="1wk">Largo <small>semanal</small></button>
+        </div>
+      </div>
+
+      <div id="error" class="alert" role="alert" hidden></div>
+
+      <section id="welcome" class="welcome">
+        <h1 class="welcome__title">¿Qué quieres analizar?</h1>
+        <p class="welcome__lead">Escribe arriba una acción española o de Estados Unidos, una materia prima como el oro, un índice o una criptomoneda. Lupa calcula más de veinte indicadores, la tendencia y el punto de entrada y de salida.</p>
+        <div id="recents" class="pop" hidden></div>
+        <div id="popular" class="popular"></div>
+      </section>
+
+      <article id="report" hidden>
+        <section id="asset" class="asset"></section>
+
+        <section class="chart-card" aria-label="Gráfico de precios">
+          <div class="chart-tools">
+            <div id="overlay-toggles" class="toggles"></div>
+            <div id="pane-toggles" class="toggles toggles--panes"></div>
+          </div>
+          <div id="readout" class="readout"></div>
+          <div id="chart" class="chart"></div>
+          <div class="chart-foot">
+            <div id="ranges" class="ranges"></div>
+            <p class="muted small chart-foot__hint">Arrastra para moverte, pellizca o usa la rueda para hacer zoom.</p>
+          </div>
+        </section>
+
+        <section id="summary" class="block"></section>
+        <section id="indicators" class="block"></section>
+        <section id="levels" class="block"></section>
+        <section id="patterns" class="block"></section>
+        <section id="performance" class="block"></section>
+        <section id="backtest" class="block"></section>
+        <section id="conclusion" class="ticket" tabindex="-1"></section>
+      </article>
+    </section>
+  </main>
+
+  <footer class="footer wrap">
+    <p>Precios de Yahoo Finance; pueden llevar unos 15 minutos de retraso. Gráficos hechos con <a href="https://www.tradingview.com/lightweight-charts/" rel="noopener">TradingView Lightweight Charts™</a>, © TradingView, Inc. Tipografía Archivo (licencia OFL).</p>
+    <p>Lupa es una herramienta personal de seguimiento y análisis. No es asesoramiento financiero.</p>
+  </footer>
+
+  <script src="/vendor/lightweight-charts.standalone.production.js"></script>
+  <script src="/js/indicators.js"></script>
+  <script src="/js/analysis.js"></script>
+  <script src="/js/tickers.js"></script>
+  <script src="/js/chart.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/js/cartera.js"></script>
+</body>
+</html>
