@@ -531,7 +531,12 @@
       const err = h('p', { class: 'editor__err', role: 'alert', hidden: true });
       const node = h('fieldset', { class: 'ecard', 'data-i': i },
         h('legend', { class: 'ecard__title', text: p.nombre || 'Nueva posición' }),
-        isNum(p.ref?.valor) && p.ref?.fecha ? h('p', { class: 'ecard__date muted', text: `Datos guardados del ${fmtDayFull(p.ref.fecha)}` }) : null,
+        isNum(p.ref?.valor) && p.ref?.fecha ? (() => {
+          const orig = originals.get(p.id), v = orig && !isCash(orig) ? val(orig) : null;
+          return h('p', { class: 'ecard__date muted' },
+            `Lo que copiaste de MyInvestor el ${fmtDayFull(p.ref.fecha)}.`,
+            v && v.ok ? [' Con lo que se ha movido la bolsa desde entonces, ahora vale ', h('strong', { class: 'num', text: eur(v.value) }), ' (lo que ves en Mi cartera).'] : null);
+        })() : null,
         h('div', { class: 'ecard__nums' },
           f('Valor en MyInvestor (€)', valor),
           f('Ganancia o pérdida (€)', pnl, 'Con signo menos si pierdes')),
@@ -638,7 +643,7 @@
     put(el,
       h('a', { class: 'back', href: '#cartera' }, '‹ Mi cartera'),
       h('h1', { class: 'pdetail__title', text: 'Editar cartera' }),
-      h('p', { class: 'muted editor__lead', text: 'Copia los dos números que te enseña MyInvestor en cada fondo o acción. Lupa recalcula el valor en directo desde hoy.' }),
+      h('p', { class: 'muted editor__lead', text: 'Aquí están los números que copiaste de MyInvestor, no el valor de ahora. Mi cartera parte de ellos y los mueve con la bolsa, por eso allí ves otras cifras. Cuando quieras ponerla al día, copia de nuevo el valor y la ganancia o pérdida que te enseña MyInvestor.' }),
       form,
       h('button', { type: 'button', class: 'btn btn--ghost btn--small editor__forget', onclick: () => { store.del('clave'); S.clave = ''; S.doc = null; location.hash = '#cartera'; start(); } }, 'Olvidar la clave en este dispositivo'),
     );
